@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:collection/collection.dart';
+import 'event_entry.dart';
+import 'repository.dart';
 
 void main() {
   runApp(const MyApp());
@@ -56,16 +58,29 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  final List<EventEntry> _entries = <EventEntry>[];
+  List<EventEntry> _entries = <EventEntry>[];
 
-  void _addEntry(int i) {
+  @override
+  void initState() {
+    super.initState();
+    _updateEntries();
+  }
+
+  void _addEntry(int i) async {
+    var entry = EventEntry(i, DateTime.now());
+    await Repository().addEvent(entry);
+    _updateEntries();
+  }
+
+  void _updateEntries() async {
+    var entries = await Repository().getAllEvents();
     setState(() {
-      _entries.add(EventEntry(i, DateTime.now()));
+      _entries = entries;
     });
   }
 
   Color _makeColor(int i) => HSVColor
-      .fromAHSV(1.0, (i - 1) * 60.0, 1.0, 1.0)
+      .fromAHSV(1.0, (i - 1) * 60.0, 0.6, 1.0)
       .toColor();
 
   List<Widget> _makeRow(double W) {
@@ -105,7 +120,7 @@ class _MyHomePageState extends State<MyHomePage> {
       padding: const EdgeInsets.all(8),
       itemCount: (_entries.length / 2).ceil(),
       itemBuilder: (BuildContext context, int index) {
-        var sublist = _entries.reversed.toList().slices(2).toList()[index];
+        var sublist = _entries.slices(2).toList()[index];
         return Row(
           children: [
             Flexible(
@@ -192,31 +207,5 @@ class _MyHomePageState extends State<MyHomePage> {
       //   child: const Icon(Icons.add),
       // ), // This trailing comma makes auto-formatting nicer for build methods.
     );
-  }
-}
-
-class EventEntry {
-  int id = 0;
-  int type;
-  DateTime dateTime;
-
-  EventEntry(this.type, this.dateTime);
-
-  int _deltaTime() {
-    return (DateTime.now().millisecondsSinceEpoch - dateTime.millisecondsSinceEpoch) ~/ 1000 * 20;
-  }
-
-  String toString() {
-    int dt = _deltaTime();
-    if (dt < 60 * 60) {
-      int min = dt ~/ 60;
-      int sec = dt - 60 * min;
-      return "$min m $sec s";
-    } else {
-      int minTotal = dt ~/ 60;
-      int hour = minTotal ~/ 60;
-      int min = minTotal - 60 * hour;
-      return "$hour h $min m";
-    }
   }
 }
