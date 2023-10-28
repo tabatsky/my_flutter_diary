@@ -8,10 +8,10 @@ class EventEntry {
   EventEntry.fromDb(this.id, this.type, this.dateTime);
 
   int _deltaTime() {
-    return (DateTime.now().millisecondsSinceEpoch - dateTime.millisecondsSinceEpoch) ~/ 1000 * 20;
+    return (DateTime.now().millisecondsSinceEpoch - dateTime.millisecondsSinceEpoch) ~/ 1000;
   }
 
-  String toString() {
+  String toStringAgo() {
     int dt = _deltaTime();
     if (dt < 60 * 60) {
       int min = dt ~/ 60;
@@ -29,4 +29,6 @@ class EventEntry {
       return "$day d $hour h";
     }
   }
+
+  String toStringDateTime() => dateTime.toString();
 }

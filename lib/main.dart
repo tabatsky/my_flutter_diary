@@ -66,9 +66,20 @@ class _MyHomePageState extends State<MyHomePage> {
     _updateEntries();
   }
 
+  @override
+  void dispose() {
+    Repository().closeDB();
+    super.dispose();
+  }
+
   void _addEntry(int i) async {
     var entry = EventEntry(i, DateTime.now());
     await Repository().addEvent(entry);
+    _updateEntries();
+  }
+
+  void _deleteEntry(EventEntry entry) async {
+    await Repository().deleteEvent(entry);
     _updateEntries();
   }
 
@@ -116,7 +127,7 @@ class _MyHomePageState extends State<MyHomePage> {
     return row;
   }
 
-  ListView _makeListView() => ListView.builder(
+  ListView _makeListView(BuildContext context) => ListView.builder(
       padding: const EdgeInsets.all(8),
       itemCount: (_entries.length / 2).ceil(),
       itemBuilder: (BuildContext context, int index) {
@@ -126,11 +137,16 @@ class _MyHomePageState extends State<MyHomePage> {
             Flexible(
               child: Padding(
                 padding: const EdgeInsets.all(4),
-                child: Container(
-                  height: 50,
-                  color: _makeColor(sublist[0].type),
-                  child: Center(
-                    child: Text(sublist[0].toString()),
+                child: GestureDetector(
+                  onLongPress: () {
+                    _showDeleteConfirmDialog(context, sublist[0]);
+                  },
+                  child: Container(
+                      height: 50,
+                      color: _makeColor(sublist[0].type),
+                      child: Center(
+                        child: Text(sublist[0].toStringAgo()),
+                      )
                   ),
                 ),
               ),
@@ -139,11 +155,16 @@ class _MyHomePageState extends State<MyHomePage> {
                 ? Flexible(
               child: Padding(
                 padding: const EdgeInsets.all(4),
-                child: Container(
-                  height: 50,
-                  color: _makeColor(sublist[1].type),
-                  child: Center(
-                    child: Text(sublist[1].toString()),
+                child: GestureDetector(
+                  onLongPress: () {
+                    _showDeleteConfirmDialog(context, sublist[1]);
+                  },
+                  child: Container(
+                      height: 50,
+                      color: _makeColor(sublist[1].type),
+                      child: Center(
+                        child: Text(sublist[1].toStringAgo()),
+                      )
                   ),
                 ),
               ),
@@ -153,6 +174,39 @@ class _MyHomePageState extends State<MyHomePage> {
         );
       }
   );
+
+  _showDeleteConfirmDialog(BuildContext context, EventEntry entry) {
+    // set up the buttons
+    Widget noButton = TextButton(
+      child: const Text("No"),
+      onPressed:  () {
+        Navigator.of(context).pop();
+      },
+    );
+    Widget yesButton = TextButton(
+      child: const Text("Yes"),
+      onPressed:  () {
+        _deleteEntry(entry);
+        Navigator.of(context).pop();
+      },
+    );
+    // set up the AlertDialog
+    AlertDialog alert = AlertDialog(
+      title: const Text("Delete entry"),
+      content: Text(entry.toStringDateTime()),
+      actions: [
+        noButton,
+        yesButton,
+      ],
+    );
+    // show the dialog
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return alert;
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -191,7 +245,7 @@ class _MyHomePageState extends State<MyHomePage> {
           // wireframe for each widget.
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            Flexible(child: _makeListView()),
+            Flexible(child: _makeListView(context)),
             Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: _makeRow(

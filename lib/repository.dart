@@ -11,14 +11,16 @@ class Repository {
 
   Repository._privateConstructor();
 
-  Future<void> createTableIfNotExists() async {
+  Future<void> initDB() async {
     _db = await openDatabase('my_flutter_diary.db');
 
     await _db?.execute(
       "CREATE TABLE IF NOT EXISTS diary (id INTEGER PRIMARY KEY AUTOINCREMENT, type INTEGER NOT NULL DEFAULT 0, time INTEGER NOT NULL DEFAULT 0);"
     );
+  }
 
-    //await db.close();
+  Future<void> closeDB() async {
+    await _db?.close();
   }
 
   Future<void> addEvent(EventEntry entry) async {
@@ -27,14 +29,20 @@ class Repository {
           'INSERT INTO diary(type, time) VALUES(?, ?)',
           [entry.type, entry.dateTime.millisecondsSinceEpoch]);
     });
+  }
 
-    //await db.close();
+  Future<void> deleteEvent(EventEntry entry) async {
+    await _db?.delete(
+      'diary',
+      where: 'id = ?',
+      whereArgs: [entry.id]
+    );
   }
 
   Future<List<EventEntry>> getAllEvents() async {
     List<EventEntry> result = <EventEntry>[];
 
-    await createTableIfNotExists();
+    await initDB();
     List<Map> list = await _db?.rawQuery('SELECT * FROM diary ORDER BY time DESC') ?? [];
 
     for (var map in list) {
