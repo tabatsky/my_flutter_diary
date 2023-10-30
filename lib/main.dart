@@ -58,7 +58,8 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  List<EventEntry> _entries = <EventEntry>[];
+  List<EventEntry> _allEntries = <EventEntry>[];
+  int _currentType = -1;
 
   @override
   void initState() {
@@ -70,6 +71,24 @@ class _MyHomePageState extends State<MyHomePage> {
   void dispose() {
     Repository().closeDB();
     super.dispose();
+  }
+
+  List<EventEntry> _getFilteredEntries() => _allEntries.where(
+          (entry) => _currentType == -1 || _currentType == entry.type
+  ).toList();
+
+  List<EventEntry?> _getTopEntries() => List.generate(6, (index) {
+    return _getFilteredEntries().firstWhereOrNull((entry) => entry.type == index + 1);
+  });
+
+  void _setCurrentType(int type) {
+    setState(() {
+      if (_currentType == type) {
+        _currentType = -1;
+      } else {
+        _currentType = type;
+      }
+    });
   }
 
   void _addEntry(int i) async {
@@ -86,13 +105,48 @@ class _MyHomePageState extends State<MyHomePage> {
   void _updateEntries() async {
     var entries = await Repository().getAllEvents();
     setState(() {
-      _entries = entries;
+      _allEntries = entries;
     });
   }
 
   Color _makeColor(int i) => HSVColor
       .fromAHSV(1.0, (i - 1) * 60.0, 0.6, 1.0)
       .toColor();
+
+  Widget _makeTopTable() {
+    var rows = _getTopEntries().slices(2).toList().mapIndexed((indexRow, sublist) {
+      var columns = List<Widget>.generate(2, (indexCol) {
+        var text = sublist[indexCol]?.toStringAgo() ?? 'never';
+        var type = indexRow * 2 + indexCol + 1;
+        var style = (type == _currentType)
+            ? const TextStyle(fontWeight: FontWeight.bold)
+            : const TextStyle(fontWeight: FontWeight.normal);
+        return Padding(
+          padding: const EdgeInsets.all(4),
+          child: GestureDetector(
+            onTap: () {
+              _setCurrentType(type);
+            },
+            child: Container(
+              height: 50,
+              color: _makeColor(type),
+              child: Center(
+                child: Text(
+                  text,
+                  style: style,
+                ),
+              ),
+            ),
+          ),
+        );
+      });
+      return TableRow(children: columns);
+    }).toList();
+    return Padding(
+      padding: const EdgeInsets.all(8),
+      child: Table(children: rows),
+    );
+  }
 
   List<Widget> _makeRow(double W) {
     double A = W / 7;
@@ -129,9 +183,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
   ListView _makeListView(BuildContext context) => ListView.builder(
       padding: const EdgeInsets.all(8),
-      itemCount: (_entries.length / 2).ceil(),
+      itemCount: (_getFilteredEntries().length / 2).ceil(),
       itemBuilder: (BuildContext context, int index) {
-        var sublist = _entries.slices(2).toList()[index];
+        var sublist = _getFilteredEntries().slices(2).toList()[index];
         return Row(
           children: [
             Flexible(
@@ -151,8 +205,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
               ),
             ),
-            sublist.length > 1
-                ? Flexible(
+            (sublist.length > 1) ? Flexible(
               child: Padding(
                 padding: const EdgeInsets.all(4),
                 child: GestureDetector(
@@ -168,8 +221,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                 ),
               ),
-            )
-                : const Spacer()
+            ) : const Spacer()
           ],
         );
       }
@@ -245,6 +297,7 @@ class _MyHomePageState extends State<MyHomePage> {
           // wireframe for each widget.
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
+            _makeTopTable(),
             Flexible(child: _makeListView(context)),
             Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
