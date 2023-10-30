@@ -39,6 +39,14 @@ class Repository {
     );
   }
 
+  Future<void> deleteAllByType(int type) async {
+    await _db?.delete(
+        'diary',
+        where: 'type = ?',
+        whereArgs: [type]
+    );
+  }
+
   Future<List<EventEntry>> getAllEvents() async {
     List<EventEntry> result = <EventEntry>[];
 

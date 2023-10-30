@@ -35,7 +35,10 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       builder: (context, child) =>
-          MediaQuery(data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true), child: child!),
+          MediaQuery(
+              data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+              child: child ?? Container()
+          ),
       home: const MyHomePage(title: 'My Flutter Diary'),
     );
   }
@@ -99,8 +102,8 @@ class _MyHomePageState extends State<MyHomePage> {
     _updateEntries();
   }
 
-  void _addEntryWithDateTime(int type, BuildContext context) async {
-    var dateTime = await _selectDateTime(context);
+  void _addEntryWithDateTime(int type) async {
+    var dateTime = await _selectDateTime();
     if (dateTime != null) {
       var entry = EventEntry(type, dateTime);
       await Repository().addEvent(entry);
@@ -110,6 +113,11 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _deleteEntry(EventEntry entry) async {
     await Repository().deleteEvent(entry);
+    _updateEntries();
+  }
+
+  void _deleteAllByType(int type) async {
+    await Repository().deleteAllByType(type);
     _updateEntries();
   }
 
@@ -138,6 +146,9 @@ class _MyHomePageState extends State<MyHomePage> {
             onTap: () {
               _setCurrentType(type);
             },
+            onLongPress: () {
+              _showDeleteAllByTypeConfirmDialog(type);
+            },
             child: Container(
               height: 50,
               color: _makeColor(type),
@@ -159,7 +170,7 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  List<Widget> _makeButtonRow(double W, BuildContext context) {
+  List<Widget> _makeButtonRow(double W) {
     double A = W / 7;
 
     List<Widget> row = <Widget>[];
@@ -178,7 +189,7 @@ class _MyHomePageState extends State<MyHomePage> {
             _addEntry(type);
           },
           onLongPress: () {
-            _addEntryWithDateTime(type, context);
+            _addEntryWithDateTime(type);
           },
           child: Text(
             '$type',
@@ -195,7 +206,7 @@ class _MyHomePageState extends State<MyHomePage> {
     return row;
   }
 
-  ListView _makeListView(BuildContext context) => ListView.builder(
+  ListView _makeListView() => ListView.builder(
       padding: const EdgeInsets.all(8),
       itemCount: (_getFilteredEntries().length / 2).ceil(),
       itemBuilder: (BuildContext context, int index) {
@@ -207,7 +218,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 padding: const EdgeInsets.all(4),
                 child: GestureDetector(
                   onLongPress: () {
-                    _showDeleteConfirmDialog(context, sublist[0]);
+                    _showDeleteConfirmDialog(sublist[0]);
                   },
                   child: Container(
                       height: 50,
@@ -224,7 +235,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 padding: const EdgeInsets.all(4),
                 child: GestureDetector(
                   onLongPress: () {
-                    _showDeleteConfirmDialog(context, sublist[1]);
+                    _showDeleteConfirmDialog(sublist[1]);
                   },
                   child: Container(
                       height: 50,
@@ -241,7 +252,7 @@ class _MyHomePageState extends State<MyHomePage> {
       }
   );
 
-  Future<DateTime?> _selectDateTime(BuildContext context) async {
+  Future<DateTime?> _selectDateTime() async {
     final DateTime? pickedDate = await showDatePicker(
         context: context,
         initialDate: DateTime.now(),
@@ -256,7 +267,7 @@ class _MyHomePageState extends State<MyHomePage> {
     return DateTime(pickedDate.year, pickedDate.month, pickedDate.day, timeOfDay.hour, timeOfDay.minute);
   }
 
-  _showDeleteConfirmDialog(BuildContext context, EventEntry entry) {
+  _showDeleteConfirmDialog(EventEntry entry) {
     // set up the buttons
     Widget noButton = TextButton(
       child: const Text("No"),
@@ -275,6 +286,39 @@ class _MyHomePageState extends State<MyHomePage> {
     AlertDialog alert = AlertDialog(
       title: const Text("Delete entry"),
       content: Text(entry.toStringDateTime()),
+      actions: [
+        noButton,
+        yesButton,
+      ],
+    );
+    // show the dialog
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return alert;
+      },
+    );
+  }
+
+  _showDeleteAllByTypeConfirmDialog(int type) {
+    // set up the buttons
+    Widget noButton = TextButton(
+      child: const Text("No"),
+      onPressed:  () {
+        Navigator.of(context).pop();
+      },
+    );
+    Widget yesButton = TextButton(
+      child: const Text("Yes"),
+      onPressed:  () {
+        _deleteAllByType(type);
+        Navigator.of(context).pop();
+      },
+    );
+    // set up the AlertDialog
+    AlertDialog alert = AlertDialog(
+      title: Text('Delete all entries of type $type?'),
+      content: null,
       actions: [
         noButton,
         yesButton,
@@ -327,11 +371,11 @@ class _MyHomePageState extends State<MyHomePage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             _makeTopTable(),
-            Flexible(child: _makeListView(context)),
+            Flexible(child: _makeListView()),
             Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: _makeButtonRow(
-                    MediaQuery.of(context).size.width, context
+                    MediaQuery.of(context).size.width
                 )
             ),
           ],
