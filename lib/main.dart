@@ -34,6 +34,8 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
+      builder: (context, child) =>
+          MediaQuery(data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true), child: child!),
       home: const MyHomePage(title: 'My Flutter Diary'),
     );
   }
@@ -91,10 +93,19 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  void _addEntry(int i) async {
-    var entry = EventEntry(i, DateTime.now());
+  void _addEntry(int type) async {
+    var entry = EventEntry(type, DateTime.now());
     await Repository().addEvent(entry);
     _updateEntries();
+  }
+
+  void _addEntryWithDateTime(int type, BuildContext context) async {
+    var dateTime = await _selectDateTime(context);
+    if (dateTime != null) {
+      var entry = EventEntry(type, dateTime);
+      await Repository().addEvent(entry);
+      _updateEntries();
+    }
   }
 
   void _deleteEntry(EventEntry entry) async {
@@ -148,26 +159,29 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  List<Widget> _makeRow(double W) {
+  List<Widget> _makeButtonRow(double W, BuildContext context) {
     double A = W / 7;
 
     List<Widget> row = <Widget>[];
 
-    for (var i = 1; i <= 6; i++) {
+    for (var type = 1; type <= 6; type++) {
       var btn = SizedBox(
         width: A,
         height: A + 20.0,
         child: TextButton(
           style: TextButton.styleFrom(
-              backgroundColor: _makeColor(i),
+              backgroundColor: _makeColor(type),
               shape: const RoundedRectangleBorder(
                   borderRadius: BorderRadius.all(Radius.zero))
           ),
-          onPressed: () => {
-            _addEntry(i)
+          onPressed: () {
+            _addEntry(type);
+          },
+          onLongPress: () {
+            _addEntryWithDateTime(type, context);
           },
           child: Text(
-            '$i',
+            '$type',
             style: const TextStyle(
               color: Colors.black,
             ),
@@ -226,6 +240,21 @@ class _MyHomePageState extends State<MyHomePage> {
         );
       }
   );
+
+  Future<DateTime?> _selectDateTime(BuildContext context) async {
+    final DateTime? pickedDate = await showDatePicker(
+        context: context,
+        initialDate: DateTime.now(),
+        firstDate: DateTime(2015),
+        lastDate: DateTime(2050));
+    if (pickedDate == null) return null;
+    final TimeOfDay? timeOfDay = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.now()
+    );
+    if (timeOfDay == null) return null;
+    return DateTime(pickedDate.year, pickedDate.month, pickedDate.day, timeOfDay.hour, timeOfDay.minute);
+  }
 
   _showDeleteConfirmDialog(BuildContext context, EventEntry entry) {
     // set up the buttons
@@ -301,8 +330,8 @@ class _MyHomePageState extends State<MyHomePage> {
             Flexible(child: _makeListView(context)),
             Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: _makeRow(
-                    MediaQuery.of(context).size.width
+                children: _makeButtonRow(
+                    MediaQuery.of(context).size.width, context
                 )
             ),
           ],
